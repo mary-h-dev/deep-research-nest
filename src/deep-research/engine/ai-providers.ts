@@ -32,12 +32,21 @@ export enum AIProvider {
 // -------------------
 // Provider Instances
 // -------------------
-const openai = process.env.OPENAI_API_KEY
-  ? createOpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      baseURL: process.env.OPENAI_ENDPOINT,
-    })
-  : undefined;
+// const openai = process.env.OPENAI_API_KEY
+//   ? createOpenAI({
+//       apiKey: process.env.OPENAI_API_KEY,
+//       baseURL: process.env.OPENAI_ENDPOINT,
+//     })
+//   : undefined;
+
+function getOpenAI() {
+  return process.env.OPENAI_API_KEY
+    ? createOpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.OPENAI_ENDPOINT,
+      })
+    : undefined;
+}
 
 
 // const anthropic = process.env.ANTHROPIC_API_KEY
@@ -52,15 +61,19 @@ const openai = process.env.OPENAI_API_KEY
 //   ? createGroq({ apiKey: process.env.GROQ_API_KEY })
 //   : undefined;
 
+console.log('Environment check:');
+console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
 
 // -------------------
 // Model Map
 // -------------------
+
+
 const MODELS: Partial<Record<AIProvider, LanguageModelV1>> = {
-  [AIProvider.OPENAI]: openai?.('o3-mini', {
-    reasoningEffort: 'medium',
-    structuredOutputs: true,
-  }),
+  // [AIProvider.OPENAI]: openai?.('o3-mini', {
+  //   reasoningEffort: 'medium',
+  //   structuredOutputs: true,
+  // }),
   // [AIProvider.ANTHROPIC]: anthropic?.('claude-3-haiku-20240307') as LanguageModelV1,
   // [AIProvider.GOOGLE]: google?.('gemini-1.0-pro-latest', { structuredOutputs: true }),
   // [AIProvider.GROQ]: groq?.('llama3-8b-8192', { structuredOutputs: true }),
@@ -73,21 +86,24 @@ const MODELS: Partial<Record<AIProvider, LanguageModelV1>> = {
 const PREFERRED_PROVIDER =
   (process.env.AI_PROVIDER as AIProvider | undefined) ?? AIProvider.OPENAI;
 
-export function getModel(): LanguageModelV1 {
-  if (openai) {
-    return openai('gpt-3.5-turbo', {
-      structuredOutputs: true,
-    });
+  export function getModel(): LanguageModelV1 {
+    const openai = getOpenAI(); // حالا در runtime چک می‌شه
+  
+    if (openai) {
+      return openai('gpt-3.5-turbo', {
+        structuredOutputs: true,
+      });
+    }
+  
+    const selected = MODELS[PREFERRED_PROVIDER];
+    if (selected) return selected;
+  
+    const fallback = Object.values(MODELS).find(Boolean);
+    if (!fallback) throw new Error('❌ No available LLM provider configured');
+  
+    return fallback;
   }
 
-  const selected = MODELS[PREFERRED_PROVIDER];
-  if (selected) return selected;
-
-  const fallback = Object.values(MODELS).find(Boolean);
-  if (!fallback) throw new Error('❌ No available LLM provider configured');
-
-  return fallback;
-}
 
 
 // -------------------
