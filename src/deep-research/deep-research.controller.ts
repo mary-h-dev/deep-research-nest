@@ -1,28 +1,36 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiTags, ApiBody } from '@nestjs/swagger';
+// src/deep-research/deep-research.controller.ts
+import {
+  Body,
+  Controller,
+  Post,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DeepResearchService } from './deep-research.service';
-
-
+import { CreateQuestionsDto } from './dto/create-questions.dto';
+import { RunResearchDto } from './dto/run-research.dto';
 
 @ApiTags('Deep Research')
 @Controller('deep-research')
+@UsePipes(new ValidationPipe({ whitelist: true, transform: true }))
 export class DeepResearchController {
   constructor(private readonly researchService: DeepResearchService) {}
 
-  @Post()
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string' },
-        depth: { type: 'number', default: 3 },
-        breadth: { type: 'number', default: 3 },
-      },
-      required: ['query'],
-    },
-  })
-  async research(@Body() body: { query: string; depth?: number; breadth?: number }) {
-    const { query, depth = 3, breadth = 3 } = body;
-    return this.researchService.runResearch(query, depth, breadth);
+  @Post('questions')
+  @ApiOperation({ summary: 'Generate follow-up questions for the user’s query' })
+  async createQuestions(
+    @Body() dto: CreateQuestionsDto,
+  ): Promise<{ questions: string[]; formatted: string }> {
+    return this.researchService.getFollowUpQuestions(dto.query);
+  }
+
+  @Post('run')
+  @ApiOperation({ summary: 'Execute deep research with provided answers' })
+  async runResearch(
+    @Body() dto: RunResearchDto,
+  ): Promise<any> {
+    const { query, depth, breadth, answers } = dto;
+    return this.researchService.runResearch(query, depth, breadth, answers);
   }
 }

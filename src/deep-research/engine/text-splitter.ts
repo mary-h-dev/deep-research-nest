@@ -1,4 +1,4 @@
-interface TextSplitterParams {
+type TextSplitterParams = {
     chunkSize: number;
     chunkOverlap: number;
   }
@@ -56,9 +56,7 @@ interface TextSplitterParams {
             if (doc !== null) {
               docs.push(doc);
             }
-            // Keep on popping if:
-            // - we have a larger chunk than in the chunk overlap
-            // - or if we still have any chunks and the length is long
+
             while (
               total > this.chunkOverlap ||
               (total + _len > this.chunkSize && total > 0)
@@ -98,7 +96,7 @@ interface TextSplitterParams {
     splitText(text: string): string[] {
       const finalChunks: string[] = [];
   
-      // Get appropriate separator to use
+
       let separator: string = this.separators[this.separators.length - 1]!;
       for (const s of this.separators) {
         if (s === '') {
@@ -111,7 +109,7 @@ interface TextSplitterParams {
         }
       }
   
-      // Now that we have the separator, split the text
+
       let splits: string[];
       if (separator) {
         splits = text.split(separator);
@@ -119,7 +117,7 @@ interface TextSplitterParams {
         splits = text.split('');
       }
   
-      // Now go merging things, recursively splitting longer texts.
+ 
       let goodSplits: string[] = [];
       for (const s of splits) {
         if (s.length < this.chunkSize) {

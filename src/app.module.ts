@@ -1,15 +1,24 @@
 import { Module } from '@nestjs/common';
-import { PostsModule } from './posts/posts.module';
-import { DeepResearchModule } from './deep-research/deep-research.module';
 import { ConfigModule } from '@nestjs/config';
+import { PrismaModule } from 'nestjs-prisma';
+import { DeepResearchModule } from './deep-research/deep-research.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env', 
+      envFilePath: '.env',
     }),
-    PostsModule,
+
+    PrismaModule.forRoot({
+      isGlobal: true,
+      prismaServiceOptions: {
+        prismaOptions: {
+          log: ['query', 'info', 'warn', 'error'],
+        },
+      },
+    }),
+
     DeepResearchModule,
   ],
 })
