@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
 
-  app.setGlobalPrefix('api');
+  // app.setGlobalPrefix('api');
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
@@ -22,6 +22,7 @@ async function bootstrap() {
 
   
   SwaggerModule.setup('api/docs', app, document);
+  app.useLogger(['log', 'error', 'warn', 'debug', 'verbose']);
 
   await app.listen(3000);
   console.log(`Server running on http://localhost:3000`);

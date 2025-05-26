@@ -6,8 +6,6 @@ import { getEncoding } from 'js-tiktoken';
 import { RecursiveCharacterTextSplitter } from './text-splitter';
 
 
-
-
 export function getModel(): LanguageModelV1 {
   const openai = process.env.OPENAI_API_KEY
     ? createOpenAI({

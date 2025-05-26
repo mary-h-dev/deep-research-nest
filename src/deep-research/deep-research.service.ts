@@ -1,34 +1,36 @@
-// src/deep-research/deep-research.service.ts
 import { Injectable } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { PrismaService } from 'nestjs-prisma';
 import { buildProfessionalQuestions } from './engine/feedback';
 import { generateObject } from 'ai';
 import { getModel } from './engine/ai-providers';
 import { systemPrompt } from './engine/prompt';
-import {
-  deepResearch,
-  writeFinalAnswer,
-  writeFinalReport,
-} from './engine/deep-research-engine';
-import * as fs from 'fs/promises';
+import { deepResearch, writeFinalAnswer, writeFinalReport } from './engine/deep-research-engine';
 import { z } from 'zod';
+import * as FormData from 'form-data';
+import { StorageService } from '../storage/storage.service';
+import { FileEntityType } from '../storage/file-entity-type.enum';
+
+
+
 
 @Injectable()
 export class DeepResearchService {
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly storageService: StorageService,
+    private readonly prisma: PrismaService,
+  ) {}
+
   async getFollowUpQuestions(query: string) {
     const { questions, formatted } = await buildProfessionalQuestions(query);
     return { questions, formatted };
   }
 
-  async runResearch(
-    query: string,
-    depth?: number,
-    breadth?: number,
-    answers?: string[],
-  ) {
+  async runResearch(query: string, depth?: number, breadth?: number, answers?: string[]) {
     if (!answers || !Array.isArray(answers)) {
       throw new Error('Answers array is required for running research');
     }
-
     const params = await this.estimateResearchParameters(query, answers);
     const finalDepth = depth ?? params.depth;
     const finalBreadth = breadth ?? params.breadth;
@@ -40,7 +42,6 @@ ${answers.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 
 Research Parameters: depth=${finalDepth}, breadth=${finalBreadth}
     `;
-
     const progressLog: string[] = [];
     const { learnings, visitedUrls } = await deepResearch({
       query: combinedPrompt,
@@ -53,58 +54,39 @@ Research Parameters: depth=${finalDepth}, breadth=${finalBreadth}
         );
       },
     });
-
-    const report = await writeFinalReport({
-      prompt: combinedPrompt,
-      learnings,
-      visitedUrls,
+    const report = await writeFinalReport({ prompt: combinedPrompt, learnings, visitedUrls });
+    const answer = await writeFinalAnswer({ prompt: combinedPrompt, learnings });
+    const deepSearchRecord = await this.prisma.aiDeepSearch.create({
+      data: {
+        userId: 'user-id',
+        query,
+        answers,
+        depth: finalDepth,
+        breadth: finalBreadth,
+        rawResult: { summary: answer, report, visitedUrlsCount: visitedUrls.length, learnings },
+      },
     });
-    const answer = await writeFinalAnswer({
-      prompt: combinedPrompt,
-      learnings,
-    });
-
+    const deepSearchRecordId = deepSearchRecord.id;
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     const prefix = (name: string) => `${name}_${ts}`;
-    await fs.writeFile(prefix('report') + '.md', report);
-    await fs.writeFile(prefix('progress') + '.log', progressLog.join('\n'));
-    await fs.writeFile(prefix('answer') + '.md', answer);
-    await fs.writeFile(
-      prefix('learnings') + '.json',
-      JSON.stringify(learnings, null, 2),
-    );
-    await fs.writeFile(prefix('visited') + '.txt', visitedUrls.join('\n'));
-
-    
-    // await this.fileService.create({
-    //   path: prefix('report') + '.md',
-    //   entityId: deepSearchRecord.id,
-    //   entityType: FileEntityType.AI_DEEP_SEARCH,
-    // });
-
-
-
+    const reportPath = await this.uploadFile(`${prefix('report')}.md`, report);
+    const progressPath = await this.uploadFile(`${prefix('progress')}.log`, progressLog.join('\n'));
+    const answerPath = await this.uploadFile(`${prefix('answer')}.md`, answer);
+    const learningsPath = await this.uploadFile(`${prefix('learnings')}.json`, JSON.stringify(learnings, null, 2));
+    const urlsPath = await this.uploadFile(`${prefix('visited')}.txt`, visitedUrls.join('\n'));
+    await this.saveFile('report.md', reportPath, deepSearchRecordId);
+    await this.saveFile('progress.log', progressPath, deepSearchRecordId);
+    await this.saveFile('answer.md', answerPath, deepSearchRecordId);
+    await this.saveFile('learnings.json', learningsPath, deepSearchRecordId);
+    await this.saveFile('visited.txt', urlsPath, deepSearchRecordId);
     return {
       success: true,
       report,
       answer,
-      parameters: {
-        depth: finalDepth,
-        breadth: finalBreadth,
-        reasoning: params.reasoning,
-      },
-      learnings: learnings.map((l) => ({
-        fact: l.learning,
-        sources: l.sources,
-      })),
+      parameters: { depth: finalDepth, breadth: finalBreadth, reasoning: params.reasoning },
+      learnings: learnings.map((l) => ({ fact: l.learning, sources: l.sources })),
       visitedUrlsCount: visitedUrls.length,
-      files: {
-        report: prefix('report') + '.md',
-        progress: prefix('progress') + '.log',
-        learnings: prefix('learnings') + '.json',
-        answer: prefix('answer') + '.md',
-        urls: prefix('visited') + '.txt',
-      },
+      files: { report: reportPath, progress: progressPath, learnings: learningsPath, answer: answerPath, urls: urlsPath },
     };
   }
 
@@ -128,5 +110,30 @@ Respond with JSON: { depth, breadth, reasoning, complexity, researchScope }
       }),
     });
     return estimation.object;
+  }
+
+  private async uploadFile(filename: string, content: string) {
+    const buffer = Buffer.from(content);         
+    const form = new FormData();
+    form.append('file', buffer, { filename });   
+  
+    const response = await this.httpService.axiosRef.post(
+      'http://localhost:3000/storage/upload',
+      form,
+      { headers: form.getHeaders() },
+    );
+  
+    return response.data.path;
+  }
+  
+
+  private async saveFile(originalName: string, path: string, entityId: string) {
+    await this.storageService.saveFileMetadata({
+      originalName,
+      filename: originalName,
+      path,
+      entityId,
+      entityType: FileEntityType.AI_DEEP_SEARCH,
+    });
   }
 }

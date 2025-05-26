@@ -4,22 +4,34 @@ datasource db {
   url  = env("DATABASE_URL")
 }
 
-
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["extendedWhereUnique"] 
 }
+
+model File {
+  id          String   @id @default(uuid())
+  originalName String
+  filename     String
+  path         String
+  entityId     String?
+  entityType   String
+  createdAt    DateTime @default(now())
+}
+
+
 
 
 model AiDeepSearch {
-  id                String   @id @default(uuid())
-  name              String?
-  description       String?
-  subject           String?
-  finalResult       String?
-  rawResult         Json?
-  deepSearchContext Json?
-  metadata          Json?
-  userId            String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id          String   @id @default(uuid())
+  userId      String
+  query       String
+  answers     Json?   
+  depth       Int?
+  breadth     Int?
+  rawResult   Json     
+  finalResult String?  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
+

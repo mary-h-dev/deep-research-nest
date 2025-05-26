@@ -10,18 +10,18 @@ import {
 } from 'class-validator';
 
 export class RunResearchDto {
-  @ApiProperty({ example: 'آیا درمان قطعی برای دیابت وجود دارد؟' })
+  @ApiProperty({ example: 'Is there a definitive cure for type 2 diabetes?' })
   @IsString()
   query: string;
 
-  @ApiPropertyOptional({ example: 3, minimum: 1, maximum: 5 })
+  @ApiPropertyOptional({ example: 3, description: 'Override research depth (1–5)', minimum: 1, maximum: 5 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(5)
   depth?: number;
 
-  @ApiPropertyOptional({ example: 3, minimum: 2, maximum: 10 })
+  @ApiPropertyOptional({ example: 3, description: 'Override research breadth (2–10)', minimum: 2, maximum: 10 })
   @IsOptional()
   @IsNumber()
   @Min(2)
@@ -31,9 +31,10 @@ export class RunResearchDto {
   @ApiPropertyOptional({
     type: [String],
     example: [
-      'هدفم نوشتن مقاله‌ای در مورد روش‌های درمانی جدید برای دیابت نوع ۲ است.',
-      'می‌خوام بدونم ترکیب داروهای جدید با رژیم غذایی موثر هست یا نه.',
+      'I want to write an article on new treatments for type 2 diabetes.',
+      'I’d like to know if combining new drugs with dietary changes is effective.',
     ],
+    description: 'User’s detailed answers to follow-up questions',
   })
   @IsOptional()
   @IsArray()
