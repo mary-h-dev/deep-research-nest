@@ -51,9 +51,9 @@ User's query:
 
   console.log('📋 Generated Questions:');
   res.object.questions.forEach((q, i) => {
-    console.log(`  ${i + 1}. ${q.question}`);
-    console.log(`     🎯 Purpose: ${q.purpose}`);
-    console.log(`     💡 Insight: ${q.expectedInsight}`);
+    // console.log(`  ${i + 1}. ${q.question}`);
+    // console.log(`     🎯 Purpose: ${q.purpose}`);
+    // console.log(`     💡 Insight: ${q.expectedInsight}`);
   });
   console.log(`📊 Research Category: ${res.object.researchCategory}`);
 
